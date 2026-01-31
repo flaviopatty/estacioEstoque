@@ -5,7 +5,8 @@ export enum Page {
   INVENTORY = 'inventory',
   REPORTS = 'reports',
   USERS = 'users',
-  SETTINGS = 'settings'
+  SETTINGS = 'settings',
+  AUTH = 'auth'
 }
 
 export interface InventoryItem {

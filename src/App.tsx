@@ -8,9 +8,25 @@ import UserManagement from './pages/UserManagement';
 import ProfileSettings from './pages/ProfileSettings';
 import Products from './pages/Products';
 import Reports from './pages/Reports';
+import Auth from './pages/Auth';
+import { useAuth } from './context/AuthContext';
+import { Loader2 } from 'lucide-react';
 
 const App: React.FC = () => {
-    const [currentPage, setCurrentPage] = useState<Page>(Page.PRODUCTS);
+    const { user, loading } = useAuth();
+    const [currentPage, setCurrentPage] = useState<Page>(Page.DASHBOARD);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-background-dark text-primary">
+                <Loader2 className="w-10 h-10 animate-spin" />
+            </div>
+        );
+    }
+
+    if (!user) {
+        return <Auth />;
+    }
 
     const renderPage = () => {
         switch (currentPage) {
