@@ -8,6 +8,7 @@ const UserManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isNewUserModalOpen, setIsNewUserModalOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
 
   const fetchUsers = async () => {
@@ -64,7 +65,10 @@ const UserManagement: React.FC = () => {
           <h1 className="text-white text-5xl font-black tracking-tight uppercase tracking-[0.1em]">Gestão de Equipe</h1>
           <p className="text-[#9e9eb7] mt-2 text-lg font-medium">Controle de acessos e aprovação de novos operadores.</p>
         </div>
-        <button className="flex items-center justify-center gap-3 rounded-2xl h-14 px-8 bg-primary hover:bg-primary/90 text-white text-sm font-black shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-all uppercase tracking-widest">
+        <button
+          onClick={() => setIsNewUserModalOpen(true)}
+          className="flex items-center justify-center gap-3 rounded-2xl h-14 px-8 bg-primary hover:bg-primary/90 text-white text-sm font-black shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-all uppercase tracking-widest"
+        >
           <UserPlus className="w-5 h-5" />
           Novo Operador
         </button>
@@ -92,8 +96,8 @@ const UserManagement: React.FC = () => {
               <thead>
                 <tr className="bg-primary/5 border-b border-border-dark">
                   <th className="px-8 py-6 text-[#9e9eb7] text-[10px] font-black uppercase tracking-[0.2em]">Identificação</th>
-                  <th className="px-8 py-6 text-[#9e9eb7] text-[10px] font-black uppercase tracking-[0.2em] text-center">Nível</th>
-                  <th className="px-8 py-6 text-[#9e9eb7] text-[10px] font-black uppercase tracking-[0.2em] text-center">Estado</th>
+                  <th className="px-8 py-6 text-[#9e9eb7] text-[10px] font-black uppercase tracking-[0.2em text-center">Nível</th>
+                  <th className="px-8 py-6 text-[#9e9eb7] text-[10px] font-black uppercase tracking-[0.2em text-center">Estado</th>
                   <th className="px-8 py-6 text-[#9e9eb7] text-[10px] font-black uppercase tracking-[0.2em] text-right">Controle</th>
                 </tr>
               </thead>
@@ -115,7 +119,8 @@ const UserManagement: React.FC = () => {
                         </div>
                         <div className="flex flex-col">
                           <span className="text-white font-black text-lg tracking-tight group-hover:text-primary transition-colors">{u.name || 'Sem nome'}</span>
-                          <span className="text-xs text-[#9e9eb7] font-bold opacity-60">Cadastrado em {new Date(u.created_at).toLocaleDateString('pt-BR')}</span>
+                          <span className="text-xs text-primary font-bold opacity-80">{u.email}</span>
+                          <span className="text-[10px] text-[#9e9eb7] font-bold opacity-40 uppercase tracking-tighter">Cadastrado em {new Date(u.created_at).toLocaleDateString('pt-BR')}</span>
                         </div>
                       </div>
                     </td>
@@ -127,10 +132,10 @@ const UserManagement: React.FC = () => {
                     <td className="px-8 py-6 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <div className={`size-2 rounded-full shadow-[0_0_8px] ${u.status === 'active' ? 'bg-green-500 shadow-green-500/50' :
-                            u.status === 'pending' ? 'bg-orange-500 shadow-orange-500/50' : 'bg-red-500 shadow-red-500/50'
+                          u.status === 'pending' ? 'bg-orange-500 shadow-orange-500/50' : 'bg-red-500 shadow-red-500/50'
                           }`}></div>
                         <span className={`text-[10px] font-black uppercase tracking-widest ${u.status === 'active' ? 'text-green-500' :
-                            u.status === 'pending' ? 'text-orange-500' : 'text-red-500'
+                          u.status === 'pending' ? 'text-orange-500' : 'text-red-500'
                           }`}>
                           {u.status === 'active' ? 'Ativo' : u.status === 'pending' ? 'Pendente' : 'Inativo'}
                         </span>
@@ -261,9 +266,51 @@ const UserManagement: React.FC = () => {
           </form>
         )}
       </Modal>
+
+      {/* New User Instructions Modal */}
+      <Modal
+        isOpen={isNewUserModalOpen}
+        onClose={() => setIsNewUserModalOpen(false)}
+        title="Novo Operador"
+      >
+        <div className="space-y-6">
+          <div className="p-6 bg-primary/10 border border-primary/20 rounded-3xl">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="size-12 rounded-2xl bg-primary flex items-center justify-center text-white">
+                <UserPlus className="w-6 h-6" />
+              </div>
+              <h4 className="text-white text-xl font-black">Como adicionar membros?</h4>
+            </div>
+            <p className="text-[#9e9eb7] text-sm leading-relaxed">
+              Para garantir a segurança, novos membros devem se cadastrar por conta própria usando o link de cadastro na tela inicial.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              <div className="size-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#9e9eb7] font-black shrink-0">1</div>
+              <p className="text-white text-sm font-medium">O novo operador acessa a tela de login e clica em <span className="text-primary font-bold">"Cadastrar"</span>.</p>
+            </div>
+            <div className="flex gap-4">
+              <div className="size-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#9e9eb7] font-black shrink-0">2</div>
+              <p className="text-white text-sm font-medium">Após preencher os dados, a conta ficará como <span className="text-orange-500 font-bold">Pendente</span>.</p>
+            </div>
+            <div className="flex gap-4">
+              <div className="size-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#9e9eb7] font-black shrink-0">3</div>
+              <p className="text-white text-sm font-medium">Você receberá uma notificação aqui nesta página para <span className="text-green-500 font-bold">Aprovar</span> o acesso.</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsNewUserModalOpen(false)}
+            className="w-full py-4 rounded-2xl bg-primary text-white font-bold hover:bg-primary/90 transition-all shadow-xl shadow-primary/20"
+          >
+            Entendi
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 };
 
 export default UserManagement;
-
