@@ -13,7 +13,7 @@ import { useAuth } from './context/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 const App: React.FC = () => {
-    const { user, loading } = useAuth();
+    const { user, profile, loading } = useAuth();
     const [currentPage, setCurrentPage] = useState<Page>(Page.DASHBOARD);
 
     if (loading) {
@@ -29,6 +29,13 @@ const App: React.FC = () => {
     }
 
     const renderPage = () => {
+        const isPending = profile?.status === 'pending';
+
+        // Navigation Guard: Restricted users only access Dashboard and Settings
+        if (isPending && (currentPage !== Page.DASHBOARD && currentPage !== Page.SETTINGS)) {
+            return <Dashboard />;
+        }
+
         switch (currentPage) {
             case Page.DASHBOARD:
                 return <Dashboard />;
