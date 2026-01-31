@@ -7,6 +7,7 @@ const Auth: React.FC = () => {
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [name, setName] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
@@ -27,6 +28,11 @@ const Auth: React.FC = () => {
                 const { error } = await supabase.auth.signUp({
                     email,
                     password,
+                    options: {
+                        data: {
+                            name: name,
+                        },
+                    },
                 });
                 if (error) throw error;
                 setSuccess(true);
@@ -118,6 +124,23 @@ const Auth: React.FC = () => {
                         )}
 
                         <div className="space-y-4">
+                            {!isLogin && (
+                                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Nome Completo</label>
+                                    <div className="relative group">
+                                        <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-primary transition-colors" />
+                                        <input
+                                            type="text"
+                                            required
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            placeholder="Seu nome"
+                                            className="w-full bg-black/20 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">E-mail</label>
                                 <div className="relative group">
