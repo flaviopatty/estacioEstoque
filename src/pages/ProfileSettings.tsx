@@ -1,8 +1,128 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { IMAGES } from '../config/constants';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
+
+interface ProfileData {
+  name: string;
+  role: string;
+}
 
 const ProfileSettings: React.FC = () => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [profile, setProfile] = useState<ProfileData>({ name: '', role: '' });
+  const [email, setEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      setEmail(user.email || '');
+      fetchProfile();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout')), 15000)
+    );
+
+    try {
+      const loadData = async () => {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('name, role')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+        return data;
+      };
+
+      const data = await Promise.race([loadData(), timeoutPromise]) as any;
+      if (data) setProfile({ name: data.name || '', role: data.role || 'Servidor' });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setLoading(true);
+    setMessage(null);
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout: O servidor demorou muito para responder')), 15000)
+    );
+
+    try {
+      const updateData = async () => {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ name: profile.name })
+          .eq('id', user.id);
+
+        if (error) throw error;
+      };
+
+      await Promise.race([updateData(), timeoutPromise]);
+      setMessage({ type: 'success', text: 'Perfil atualizado com sucesso!' });
+    } catch (error: any) {
+      let errorMessage = error.message || 'Erro ao atualizar perfil.';
+      if (error.name === 'AbortError' || error.message.includes('Timeout')) {
+        errorMessage = 'A conexão está instável. Tente novamente.';
+      }
+      setMessage({ type: 'error', text: errorMessage });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setMessage({ type: 'error', text: 'As senhas não coincidem.' });
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout: O servidor demorou muito para responder')), 15000)
+    );
+
+    try {
+      const updateData = async () => {
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+      };
+
+      await Promise.race([updateData(), timeoutPromise]);
+
+      setMessage({ type: 'success', text: 'Senha atualizada com sucesso!' });
+      setNewPassword('');
+      setConfirmPassword('');
+      setCurrentPassword('');
+    } catch (error: any) {
+      let errorMessage = error.message || 'Erro ao atualizar senha.';
+      if (error.name === 'AbortError' || error.message.includes('Timeout')) {
+        errorMessage = 'A conexão está instável. Tente novamente.';
+      }
+      setMessage({ type: 'error', text: errorMessage });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="mb-8">

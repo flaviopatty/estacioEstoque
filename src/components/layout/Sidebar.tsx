@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Page } from '../../types';
 import { IMAGES } from '../../config/constants';
 import { cn } from '../../utils/cn';
+import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   currentPage: Page;
@@ -9,14 +10,26 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate }) => {
-  const navItems = [
-    { id: Page.DASHBOARD, label: 'Dashboard', icon: 'dashboard' },
-    { id: Page.PRODUCTS, label: 'Produtos', icon: 'inventory_2' },
-    { id: Page.INVENTORY, label: 'Movimentações', icon: 'sync_alt' },
-    { id: Page.REPORTS, label: 'Relatórios', icon: 'analytics' },
-    { id: Page.USERS, label: 'Usuários', icon: 'group' },
-    { id: Page.SETTINGS, label: 'Configurações', icon: 'settings' },
-  ];
+  const { profile } = useAuth();
+  const isPending = profile?.status === 'pending';
+
+  const navItems = useMemo(() => {
+    const allItems = [
+      { id: Page.DASHBOARD, label: 'Dashboard', icon: 'dashboard' },
+      { id: Page.PRODUCTS, label: 'Produtos', icon: 'inventory_2' },
+      { id: Page.INVENTORY, label: 'Movimentações', icon: 'sync_alt' },
+      { id: Page.REPORTS, label: 'Relatórios', icon: 'analytics' },
+      { id: Page.USERS, label: 'Usuários', icon: 'group' },
+      { id: Page.SETTINGS, label: 'Configurações', icon: 'settings' },
+    ];
+
+    if (isPending) {
+      // Return only Dashboard and Settings if pending
+      return allItems.filter(item => item.id === Page.DASHBOARD || item.id === Page.SETTINGS);
+    }
+
+    return allItems;
+  }, [isPending]);
 
   return (
     <aside className="w-64 flex flex-col bg-[#111117] border-r border-border-dark shrink-0">
@@ -60,22 +73,19 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate }) => {
         <div className="flex flex-col gap-4">
           <button
             onClick={() => onNavigate(Page.PRODUCTS)}
-            className="flex w-full items-center justify-center gap-2 rounded-xl h-12 px-4 bg-accent text-background-dark text-sm font-black transition-all active:scale-95 hover:bg-accent/90 shadow-lg shadow-accent/20"
+            disabled={isPending}
+            className={cn(
+              "flex w-full items-center justify-center gap-2 rounded-xl h-12 px-4 text-background-dark text-sm font-black transition-all shadow-lg",
+              isPending
+                ? "bg-gray-700 text-gray-400 cursor-not-allowed shadow-none"
+                : "bg-accent hover:bg-accent/90 shadow-accent/20 active:scale-95"
+            )}
           >
             <span className="material-symbols-outlined text-[20px]">add_box</span>
             <span>Novo Produto</span>
           </button>
 
-          <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/5">
-            <div
-              className="size-9 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold bg-cover bg-center border-2 border-primary/20"
-              style={{ backgroundImage: `url("${IMAGES.ADMIN_AVATAR}")` }}
-            />
-            <div className="flex flex-col overflow-hidden">
-              <p className="text-xs font-black truncate text-white">João Silva</p>
-              <p className="text-[10px] text-[#9e9eb7] font-bold uppercase tracking-wider truncate">Admin</p>
-            </div>
-          </div>
+
         </div>
       </div>
     </aside>
