@@ -29,13 +29,23 @@ const Reports: React.FC = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('name');
 
-      if (error) throw error;
-      setProducts((data || []).map(mapSupabaseToInventoryItem));
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout: O servidor demorou muito para responder')), 15000)
+      );
+
+      const loadData = async () => {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('name');
+
+        if (error) throw error;
+        return (data || []).map(mapSupabaseToInventoryItem);
+      };
+
+      const productsData = await Promise.race([loadData(), timeoutPromise]) as InventoryItem[];
+      setProducts(productsData);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -239,8 +249,8 @@ const Reports: React.FC = () => {
             key={cat}
             onClick={() => setSelectedCategory(cat)}
             className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all border ${selectedCategory === cat
-                ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
-                : 'bg-surface-dark text-[#9e9eb7] border-border-dark hover:border-[#9e9eb7]'
+              ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
+              : 'bg-surface-dark text-[#9e9eb7] border-border-dark hover:border-[#9e9eb7]'
               }`}
           >
             {cat}

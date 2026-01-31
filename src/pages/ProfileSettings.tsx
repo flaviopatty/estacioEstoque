@@ -28,14 +28,24 @@ const ProfileSettings: React.FC = () => {
 
   const fetchProfile = async () => {
     if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('name, role')
-        .eq('id', user.id)
-        .single();
 
-      if (error) throw error;
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout')), 15000)
+    );
+
+    try {
+      const loadData = async () => {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('name, role')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+        return data;
+      };
+
+      const data = await Promise.race([loadData(), timeoutPromise]) as any;
       if (data) setProfile({ name: data.name || '', role: data.role || 'Servidor' });
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -49,16 +59,28 @@ const ProfileSettings: React.FC = () => {
     setLoading(true);
     setMessage(null);
 
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ name: profile.name })
-        .eq('id', user.id);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout: O servidor demorou muito para responder')), 15000)
+    );
 
-      if (error) throw error;
+    try {
+      const updateData = async () => {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ name: profile.name })
+          .eq('id', user.id);
+
+        if (error) throw error;
+      };
+
+      await Promise.race([updateData(), timeoutPromise]);
       setMessage({ type: 'success', text: 'Perfil atualizado com sucesso!' });
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Erro ao atualizar perfil.' });
+      let errorMessage = error.message || 'Erro ao atualizar perfil.';
+      if (error.name === 'AbortError' || error.message.includes('Timeout')) {
+        errorMessage = 'A conexão está instável. Tente novamente.';
+      }
+      setMessage({ type: 'error', text: errorMessage });
     } finally {
       setLoading(false);
     }
@@ -74,15 +96,28 @@ const ProfileSettings: React.FC = () => {
     setLoading(true);
     setMessage(null);
 
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout: O servidor demorou muito para responder')), 15000)
+    );
+
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
+      const updateData = async () => {
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+      };
+
+      await Promise.race([updateData(), timeoutPromise]);
+
       setMessage({ type: 'success', text: 'Senha atualizada com sucesso!' });
       setNewPassword('');
       setConfirmPassword('');
       setCurrentPassword('');
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Erro ao atualizar senha.' });
+      let errorMessage = error.message || 'Erro ao atualizar senha.';
+      if (error.name === 'AbortError' || error.message.includes('Timeout')) {
+        errorMessage = 'A conexão está instável. Tente novamente.';
+      }
+      setMessage({ type: 'error', text: errorMessage });
     } finally {
       setLoading(false);
     }

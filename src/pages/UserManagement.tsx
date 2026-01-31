@@ -13,16 +13,26 @@ const UserManagement: React.FC = () => {
 
   const fetchUsers = async () => {
     setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setUsers(data || []);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout: O servidor demorou muito para responder')), 15000)
+    );
+
+    try {
+      const loadData = async () => {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+      };
+
+      const data = await Promise.race([loadData(), timeoutPromise]) as any[];
+      setUsers(data);
     } catch (error: any) {
-      console.error('Error fetching users:', error.message);
+      console.error('Error fetching users:', error);
     } finally {
       setLoading(false);
     }
@@ -37,20 +47,34 @@ const UserManagement: React.FC = () => {
     if (!selectedUser) return;
 
     setUpdating(true);
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          role: selectedUser.role,
-          status: selectedUser.status
-        })
-        .eq('id', selectedUser.id);
 
-      if (error) throw error;
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout: O servidor demorou muito para responder')), 15000)
+    );
+
+    try {
+      const updateData = async () => {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            role: selectedUser.role,
+            status: selectedUser.status
+          })
+          .eq('id', selectedUser.id);
+
+        if (error) throw error;
+      };
+
+      await Promise.race([updateData(), timeoutPromise]);
+
       await fetchUsers();
       setIsModalOpen(false);
     } catch (error: any) {
-      alert('Erro ao atualizar usuário: ' + error.message);
+      let errorMessage = error.message || 'Erro desconhecido';
+      if (error.name === 'AbortError' || error.message.includes('Timeout')) {
+        errorMessage = 'A conexão está instável. Tente novamente.';
+      }
+      alert('Erro ao atualizar usuário: ' + errorMessage);
     } finally {
       setUpdating(false);
     }

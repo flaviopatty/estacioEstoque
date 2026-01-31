@@ -60,20 +60,33 @@ const Products: React.FC = () => {
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    try {
-      const { error } = await supabase
-        .from('products')
-        .insert([{
-          name: newName,
-          category: newCategory,
-          unit: newUnit,
-          quantity: parseFloat(newQuantity),
-          min_stock: parseFloat(newMinStock),
-          expiration_date: newExpirationDate || null,
-          status: 'ativo'
-        }]);
 
-      if (error) throw error;
+    // Create a timeout promise
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout: O servidor demorou muito para responder')), 15000)
+    );
+
+    try {
+      // Wrap the Supabase call in a promise to make it raceable
+      const insertData = async () => {
+        const { error } = await supabase
+          .from('products')
+          .insert([{
+            name: newName,
+            category: newCategory,
+            unit: newUnit,
+            quantity: parseFloat(newQuantity),
+            min_stock: parseFloat(newMinStock),
+            expiration_date: newExpirationDate || null,
+            status: 'ativo'
+          }]);
+
+        if (error) throw error;
+        return true;
+      };
+
+      // Race the insert against the timeout
+      await Promise.race([insertData(), timeoutPromise]);
 
       setShowModal(false);
       // Reset form
@@ -86,7 +99,18 @@ const Products: React.FC = () => {
 
       fetchProducts();
     } catch (error: any) {
-      alert('Erro ao salvar produto: ' + error.message);
+      console.error('Error saving product:', error);
+
+      let errorMessage = error.message || 'Erro desconhecido';
+
+      // Handle AbortError or specific connection issues
+      if (error.name === 'AbortError' || error.message.includes('signal is aborted')) {
+        errorMessage = 'A conexão foi interrompida. Verifique sua internet e tente novamente.';
+      } else if (error.message.includes('Timeout')) {
+        errorMessage = 'O servidor demorou muito para responder. Tente novamente em instantes.';
+      }
+
+      alert('Erro ao salvar produto: ' + errorMessage);
     } finally {
       setSubmitting(false);
     }

@@ -85,16 +85,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate }) => {
             <span>Novo Produto</span>
           </button>
 
-          <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/5">
-            <div
-              className="size-9 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold bg-cover bg-center border-2 border-primary/20"
-              style={{ backgroundImage: `url("${IMAGES.ADMIN_AVATAR}")` }}
-            />
-            <div className="flex flex-col overflow-hidden">
-              <p className="text-xs font-black truncate text-white">{profile?.name || 'Carregando...'}</p>
-              <p className="text-[10px] text-[#9e9eb7] font-bold uppercase tracking-wider truncate">{profile?.role || '...'}</p>
-            </div>
-          </div>
+
         </div>
       </div>
     </aside>

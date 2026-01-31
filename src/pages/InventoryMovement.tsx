@@ -21,32 +21,47 @@ const InventoryMovement: React.FC = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    try {
-      // Fetch products for select
-      const { data: productsData, error: productsError } = await supabase
-        .from('products')
-        .select('id, name, unit')
-        .order('name');
-      if (productsError) throw productsError;
-      setProducts(productsData || []);
 
-      // Fetch recent movements
-      const { data: movementsData, error: movementsError } = await supabase
-        .from('movements')
-        .select(`
-                    id,
-                    quantity,
-                    type,
-                    created_at,
-                    description,
-                    products (name, unit)
-                `)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      if (movementsError) throw movementsError;
-      setMovements(movementsData || []);
+    // Timeout promise
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout: O servidor demorou muito para responder')), 15000)
+    );
+
+    try {
+      const loadData = async () => {
+        // Execute requests in parallel
+        const [productsParam, movementsParam] = await Promise.all([
+          supabase
+            .from('products')
+            .select('id, name, unit')
+            .order('name'),
+
+          supabase
+            .from('movements')
+            .select(`
+                id,
+                quantity,
+                type,
+                created_at,
+                description,
+                products (name, unit)
+            `)
+            .order('created_at', { ascending: false })
+            .limit(10)
+        ]);
+
+        if (productsParam.error) throw productsParam.error;
+        if (movementsParam.error) throw movementsParam.error;
+
+        return { products: productsParam.data, movements: movementsParam.data };
+      };
+
+      const { products, movements } = await Promise.race([loadData(), timeoutPromise]) as any;
+
+      setProducts(products || []);
+      setMovements(movements || []);
     } catch (error: any) {
-      console.error('Error fetching inventory data:', error.message);
+      console.error('Error fetching inventory data:', error);
     } finally {
       setLoading(false);
     }
@@ -61,53 +76,70 @@ const InventoryMovement: React.FC = () => {
     if (!selectedProductId || !quantity) return;
 
     setSubmitting(true);
+
+    // Timeout promise
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout: O servidor demorou muito para responder')), 15000)
+    );
+
     try {
-      const qty = parseFloat(quantity);
-      const movementQty = type === 'out' ? -qty : qty;
+      const processMovement = async () => {
+        const qty = parseFloat(quantity);
+        const movementQty = type === 'out' ? -qty : qty;
 
-      // 1. Get current product quantity
-      const { data: product, error: fetchError } = await supabase
-        .from('products')
-        .select('quantity')
-        .eq('id', selectedProductId)
-        .single();
+        // 1. Get current product quantity
+        const { data: product, error: fetchError } = await supabase
+          .from('products')
+          .select('quantity')
+          .eq('id', selectedProductId)
+          .single();
 
-      if (fetchError) throw fetchError;
+        if (fetchError) throw fetchError;
 
-      const newTotal = parseFloat(product.quantity) + movementQty;
-      if (newTotal < 0) {
-        throw new Error('Estoque insuficiente para esta saída.');
-      }
+        const newTotal = parseFloat(product.quantity) + movementQty;
+        if (newTotal < 0) {
+          throw new Error('Estoque insuficiente para esta saída.');
+        }
 
-      // 2. Insert movement
-      const { error: moveError } = await supabase
-        .from('movements')
-        .insert([{
-          product_id: selectedProductId,
-          quantity: qty,
-          type: type,
-          description: description,
-          responsible_id: user?.id
-        }]);
+        // 2. Insert movement
+        const { error: moveError } = await supabase
+          .from('movements')
+          .insert([{
+            product_id: selectedProductId,
+            quantity: qty,
+            type: type,
+            description: description,
+            responsible_id: user?.id
+          }]);
 
-      if (moveError) throw moveError;
+        if (moveError) throw moveError;
 
-      // 3. Update product quantity
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ quantity: newTotal })
-        .eq('id', selectedProductId);
+        // 3. Update product quantity
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ quantity: newTotal })
+          .eq('id', selectedProductId);
 
-      if (updateError) throw updateError;
+        if (updateError) throw updateError;
+      };
+
+      await Promise.race([processMovement(), timeoutPromise]);
 
       // Reset form and refresh
       setSelectedProductId('');
       setQuantity('');
       setDescription('');
-      fetchData();
+
+      // Refresh data cleanly
+      await fetchData();
+
       alert('Movimentação realizada com sucesso!');
     } catch (error: any) {
-      alert('Erro na movimentação: ' + error.message);
+      let errorMessage = error.message || 'Erro desconhecido';
+      if (error.name === 'AbortError' || error.message.includes('Timeout')) {
+        errorMessage = 'A conexão está instável. Tente novamente.';
+      }
+      alert('Erro na movimentação: ' + errorMessage);
     } finally {
       setSubmitting(false);
     }
