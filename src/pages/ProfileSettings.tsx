@@ -1,15 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { IMAGES } from '../config/constants';
-import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
-
-interface ProfileData {
-  name: string;
-  role: string;
-}
 
 const ProfileSettings: React.FC = () => {
+<<<<<<< HEAD
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<ProfileData>({ name: '', role: '' });
@@ -123,18 +117,14 @@ const ProfileSettings: React.FC = () => {
     }
   };
 
+=======
+>>>>>>> parent of 920ceda (feat: implement user profile settings page allowing users to view and update personal information and change their password.)
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="mb-8">
         <h2 className="text-white text-4xl font-black leading-tight tracking-tight">Configurações do Perfil</h2>
         <p className="text-[#9e9eb7] text-base">Gerencie seus dados e segurança da conta.</p>
       </div>
-
-      {message && (
-        <div className={`mb-6 p-4 rounded-xl border ${message.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
-          {message.text}
-        </div>
-      )}
 
       <div className="bg-card-dark rounded-xl p-8 mb-8 border border-border-dark shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 rounded-bl-full"></div>
@@ -149,8 +139,8 @@ const ProfileSettings: React.FC = () => {
             </button>
           </div>
           <div className="flex-1 text-center md:text-left">
-            <h3 className="text-2xl font-bold mb-1">{profile.name || 'Usuário'}</h3>
-            <p className="text-[#9e9eb7] mb-4">{profile.role} • {email}</p>
+            <h3 className="text-2xl font-bold mb-1">João Silva</h3>
+            <p className="text-[#9e9eb7] mb-4">Administrador de Almoxarifado • Matrícula: 2024.12.001</p>
             <div className="flex flex-wrap justify-center md:justify-start gap-3">
               <button className="bg-primary hover:bg-primary/80 text-white px-5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all">
                 <span className="material-symbols-outlined text-base">upload</span>
@@ -166,87 +156,49 @@ const ProfileSettings: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <form onSubmit={handleUpdateProfile} className="bg-card-dark rounded-xl border border-border-dark overflow-hidden">
-            <div className="px-6 py-4 border-b border-border-dark bg-white/5 flex justify-between items-center">
+          <div className="bg-card-dark rounded-xl border border-border-dark overflow-hidden">
+            <div className="px-6 py-4 border-b border-border-dark bg-white/5">
               <h2 className="text-lg font-bold flex items-center gap-2">
                 <span className="material-symbols-outlined text-accent fill-1">person</span>
                 Informações Pessoais
               </h2>
-              <button
-                type="submit"
-                disabled={loading}
-                className="bg-primary hover:bg-primary/80 text-white px-4 py-1.5 rounded-lg text-sm font-bold transition-all disabled:opacity-50"
-              >
-                {loading ? 'Salvando...' : 'Salvar Alterações'}
-              </button>
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[#9e9eb7] uppercase">Nome Completo</label>
-                <input
-                  className="w-full bg-[#111117] border border-border-dark rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-white"
-                  value={profile.name}
-                  onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                />
+                <input className="w-full bg-[#111117] border border-border-dark rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-white" defaultValue="João Silva" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[#9e9eb7] uppercase">E-mail</label>
-                <input
-                  className="w-full bg-[#111117] border border-border-dark rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-white opacity-50 cursor-not-allowed"
-                  value={email}
-                  disabled
-                />
+                <input className="w-full bg-[#111117] border border-border-dark rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-white" defaultValue="joao.silva@prefeitura.edu.br" />
               </div>
             </div>
-          </form>
+          </div>
 
-          <form onSubmit={handleUpdatePassword} className="bg-card-dark rounded-xl border border-border-dark overflow-hidden">
-            <div className="px-6 py-4 border-b border-border-dark bg-white/5 flex justify-between items-center">
+          <div className="bg-card-dark rounded-xl border border-border-dark overflow-hidden">
+            <div className="px-6 py-4 border-b border-border-dark bg-white/5">
               <h2 className="text-lg font-bold flex items-center gap-2">
                 <span className="material-symbols-outlined text-accent fill-1">security</span>
                 Segurança
               </h2>
-              <button
-                type="submit"
-                disabled={loading}
-                className="bg-primary hover:bg-primary/80 text-white px-4 py-1.5 rounded-lg text-sm font-bold transition-all disabled:opacity-50"
-              >
-                {loading ? 'Atualizando...' : 'Atualizar Senha'}
-              </button>
             </div>
             <div className="p-6 space-y-6">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[#9e9eb7] uppercase">Senha Atual</label>
-                <input
-                  className="w-full bg-[#111117] border border-border-dark rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-white"
-                  type="password"
-                  placeholder="••••••••"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                />
+                <input className="w-full bg-[#111117] border border-border-dark rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-white" type="password" placeholder="••••••••" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-[#9e9eb7] uppercase">Nova Senha</label>
-                  <input
-                    className="w-full bg-[#111117] border border-border-dark rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-white"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                  />
+                  <input className="w-full bg-[#111117] border border-border-dark rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-white" type="password" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-[#9e9eb7] uppercase">Confirmar Senha</label>
-                  <input
-                    className="w-full bg-[#111117] border border-border-dark rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-white"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                  />
+                  <input className="w-full bg-[#111117] border border-border-dark rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-white" type="password" />
                 </div>
               </div>
             </div>
-          </form>
+          </div>
         </div>
 
         <div className="lg:col-span-1 space-y-6">
@@ -272,13 +224,13 @@ const ProfileSettings: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-primary/20 to-accent/10 rounded-xl border border-primary/20 p-6 text-center md:text-left">
-            <div className="flex items-center gap-3 mb-3 justify-center md:justify-start">
+          <div className="bg-gradient-to-br from-primary/20 to-accent/10 rounded-xl border border-primary/20 p-6">
+            <div className="flex items-center gap-3 mb-3">
               <span className="material-symbols-outlined text-accent text-3xl fill-1">verified_user</span>
               <h3 className="font-bold text-lg">Proteção 2FA</h3>
             </div>
             <p className="text-sm text-[#9e9eb7] leading-relaxed mb-4">Aumente a segurança da sua conta ativando a autenticação em duas etapas.</p>
-            <span className="px-3 py-1 bg-green-500/20 text-green-400 text-[10px] font-bold rounded-lg uppercase inline-block">Ativado</span>
+            <span className="px-2 py-1 bg-green-500/20 text-green-400 text-[10px] font-bold rounded uppercase">Ativado</span>
           </div>
         </div>
       </div>
@@ -287,4 +239,3 @@ const ProfileSettings: React.FC = () => {
 };
 
 export default ProfileSettings;
-
