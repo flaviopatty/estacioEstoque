@@ -16,50 +16,78 @@ const Dashboard: React.FC = () => {
 
   const fetchStats = async () => {
     setLoading(true);
+
+    // Timeout promise to prevent infinite loading
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout de conexão')), 15000)
+    );
+
     try {
-      // 1. Total Items & Critical Items
-      const { data: products, error: pError } = await supabase
-        .from('products')
-        .select('id, quantity, min_stock, expiration_date');
-      if (pError) throw pError;
+      // Execute all requests in parallel with safety wrapper
+      const loadData = async () => {
+        const [productsParam, movementsInParam, movementsOutParam] = await Promise.all([
+          supabase
+            .from('products')
+            .select('id, quantity, min_stock, expiration_date'),
+
+          supabase
+            .from('movements')
+            .select('id, quantity, created_at, products(name, unit)')
+            .eq('type', 'in')
+            .order('created_at', { ascending: false })
+            .limit(5),
+
+          supabase
+            .from('movements')
+            .select('id, quantity, created_at, description, products(name, unit)')
+            .eq('type', 'out')
+            .order('created_at', { ascending: false })
+            .limit(5)
+        ]);
+
+        return { productsParam, movementsInParam, movementsOutParam };
+      };
+
+      // Race against timeout
+      const result = await Promise.race([loadData(), timeoutPromise]) as any;
+      const { productsParam, movementsInParam, movementsOutParam } = result;
+
+      // Handle Products Data
+      const products = productsParam.data || [];
+      if (productsParam.error) console.error('Error fetching products:', productsParam.error);
 
       const totalItems = products.length;
-      const criticalItems = products.filter(p => parseFloat(p.quantity) <= parseFloat(p.min_stock)).length;
+      const criticalItems = products.filter((p: any) => parseFloat(p.quantity) <= parseFloat(p.min_stock)).length;
 
       // Near expiration (next 30 days)
       const thirtyDaysFromNow = new Date();
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-      const nearExpiration = products.filter(p => p.expiration_date && new Date(p.expiration_date) <= thirtyDaysFromNow && new Date(p.expiration_date) >= new Date()).length;
+      const nearExpiration = products.filter((p: any) =>
+        p.expiration_date &&
+        new Date(p.expiration_date) <= thirtyDaysFromNow &&
+        new Date(p.expiration_date) >= new Date()
+      ).length;
 
-      // 2. Recent Inflows
-      const { data: recentIn, error: inError } = await supabase
-        .from('movements')
-        .select('id, quantity, created_at, products(name, unit)')
-        .eq('type', 'in')
-        .order('created_at', { ascending: false })
-        .limit(5);
-      if (inError) throw inError;
+      // Handle Movements Data
+      const recentIn = movementsInParam.data || [];
+      if (movementsInParam.error) console.error('Error fetching inflows:', movementsInParam.error);
 
-      // 3. Recent Outflows
-      const { data: recentOut, error: outError } = await supabase
-        .from('movements')
-        .select('id, quantity, created_at, description, products(name, unit)')
-        .eq('type', 'out')
-        .order('created_at', { ascending: false })
-        .limit(5);
-      if (outError) throw outError;
+      const recentOut = movementsOutParam.data || [];
+      if (movementsOutParam.error) console.error('Error fetching outflows:', movementsOutParam.error);
 
       setStats({
         totalItems,
         criticalItems,
         nearExpiration,
-        recentIn: recentIn || [],
-        recentOut: recentOut || [],
+        recentIn,
+        recentOut,
       });
+
     } catch (error: any) {
-      console.error('Error fetching dashboard stats:', error.message);
+      console.error('Error fetching dashboard stats - Full Details:', error);
+      // Even on error, we stop loading to allow the user to see the interface (potentially empty)
     } finally {
-      setLoading(false);
+      if (loading) setLoading(false);
     }
   };
 
