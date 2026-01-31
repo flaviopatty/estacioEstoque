@@ -1,44 +1,82 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { INITIAL_PRODUCTS } from '../config/constants';
 import { InventoryItem } from '../types';
+import { supabase } from '../lib/supabase';
 
-// Dados simulados de consumo médio baseados nas categorias existentes
-const MOCK_CONSUMPTION_DATA = [
-  { category: 'Alimento', consumption: 145, unit: 'kg' },
-  { category: 'Bebidas', consumption: 80, unit: 'L' },
-  { category: 'Descartáveis', consumption: 250, unit: 'un' },
-  { category: 'Limpeza', consumption: 65, unit: 'L' },
-  { category: 'Papelaria', consumption: 120, unit: 'un' },
-];
+// Helper to map Supabase fields to local types
+const mapSupabaseToInventoryItem = (item: any): InventoryItem => ({
+  id: item.id,
+  name: item.name,
+  quantity: Number(item.quantity) || 0,
+  minStock: Number(item.min_stock) || 0,
+  unit: item.unit as any,
+  category: item.category,
+  status: item.status as any,
+  lastUpdated: item.updated_at,
+  expirationDate: item.expiration_date || undefined
+});
 
 const Reports: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
+  const [products, setProducts] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setProducts((data || []).map(mapSupabaseToInventoryItem));
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Extrair categorias únicas
   const categories = useMemo(() => {
-    const cats = INITIAL_PRODUCTS.map(p => p.category);
+    const cats = products.map(p => p.category);
     return ['Todas', ...Array.from(new Set(cats))];
-  }, []);
+  }, [products]);
+
+  // Consumo por Categoria (Derivado dos produtos atuais para demonstração)
+  // Nota: Em um sistema real, isso viria de uma tabela de 'movements' agregada
+  const consumptionData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    products.forEach(p => {
+      counts[p.category] = (counts[p.category] || 0) + p.quantity;
+    });
+    return Object.entries(counts).map(([category, consumption]) => ({
+      category,
+      consumption,
+      unit: products.find(p => p.category === category)?.unit || ''
+    }));
+  }, [products]);
 
   // Filtrar e ordenar por validade (mais próximas primeiro)
   const filteredProducts = useMemo(() => {
-    let list = [...INITIAL_PRODUCTS];
+    let list = [...products];
 
     if (selectedCategory !== 'Todas') {
       list = list.filter(p => p.category === selectedCategory);
     }
 
-    // Ordenação: 
-    // 1. Quem tem data de validade vem antes de quem não tem
-    // 2. Quem vence antes vem primeiro
     return list.sort((a, b) => {
       if (!a.expirationDate) return 1;
       if (!b.expirationDate) return -1;
       return new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime();
     });
-  }, [selectedCategory]);
+  }, [selectedCategory, products]);
 
   const getDaysRemaining = (dateStr?: string) => {
     if (!dateStr) return null;
@@ -81,6 +119,17 @@ const Reports: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-[#9e9eb7] font-medium">Carregando dados do inventário...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8">
       <div className="flex justify-between items-end mb-10">
@@ -111,13 +160,13 @@ const Reports: React.FC = () => {
         <div className="p-6 bg-red-500/5 border border-red-500/20 rounded-2xl">
           <p className="text-red-400 text-xs font-bold uppercase tracking-widest mb-1">Itens Vencidos</p>
           <h3 className="text-3xl font-black text-white">
-            {INITIAL_PRODUCTS.filter(p => (getDaysRemaining(p.expirationDate) ?? 1) < 0).length}
+            {products.filter(p => (getDaysRemaining(p.expirationDate) ?? 1) < 0).length}
           </h3>
         </div>
         <div className="p-6 bg-orange-500/5 border border-orange-500/20 rounded-2xl">
           <p className="text-orange-400 text-xs font-bold uppercase tracking-widest mb-1">Validade Próxima (30 dias)</p>
           <h3 className="text-3xl font-black text-white">
-            {INITIAL_PRODUCTS.filter(p => {
+            {products.filter(p => {
               const days = getDaysRemaining(p.expirationDate);
               return days !== null && days >= 0 && days <= 30;
             }).length}
@@ -126,7 +175,7 @@ const Reports: React.FC = () => {
         <div className="p-6 bg-primary/5 border border-primary/20 rounded-2xl">
           <p className="text-primary text-xs font-bold uppercase tracking-widest mb-1">Total de Itens em Estoque</p>
           <h3 className="text-3xl font-black text-white">
-            {INITIAL_PRODUCTS.reduce((acc, curr) => acc + curr.quantity, 0).toFixed(0)}
+            {products.reduce((acc, curr) => acc + curr.quantity, 0).toFixed(0)}
           </h3>
         </div>
       </div>
@@ -135,17 +184,17 @@ const Reports: React.FC = () => {
       <div className="mb-8 bg-surface-dark border border-border-dark rounded-2xl p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h3 className="text-white text-xl font-bold italic tracking-wide">Média de Consumo Mensal</h3>
-            <p className="text-[#9e9eb7] text-sm">Distribuição de consumo por categoria de produto</p>
+            <h3 className="text-white text-xl font-bold italic tracking-wide">Volume por Categoria</h3>
+            <p className="text-[#9e9eb7] text-sm">Distribuição quantitativa de itens por categoria</p>
           </div>
           <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-lg">
             <span className="material-symbols-outlined text-primary text-sm">bar_chart</span>
-            <span className="text-xs font-bold text-primary uppercase">Métricas Ativas</span>
+            <span className="text-xs font-bold text-primary uppercase">Métricas Reais</span>
           </div>
         </div>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={MOCK_CONSUMPTION_DATA} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+            <BarChart data={consumptionData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2d2d44" vertical={false} />
               <XAxis
                 dataKey="category"
@@ -171,7 +220,7 @@ const Reports: React.FC = () => {
                 labelStyle={{ color: '#9e9eb7', marginBottom: '4px', textTransform: 'uppercase', fontSize: '10px' }}
               />
               <Bar dataKey="consumption" radius={[6, 6, 0, 0]} barSize={40}>
-                {MOCK_CONSUMPTION_DATA.map((entry, index) => (
+                {consumptionData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
                     fill={index % 2 === 0 ? '#4e4ee4' : '#E3C54D'}
@@ -222,7 +271,7 @@ const Reports: React.FC = () => {
                   <td className="px-6 py-6">
                     <div className="flex flex-col">
                       <span className="text-white font-bold text-lg">{product.name}</span>
-                      <span className="text-[10px] text-[#9e9eb7] uppercase font-medium">{product.id}</span>
+                      <span className="text-[10px] text-[#9e9eb7] uppercase font-medium">{product.id.split('-')[0]}</span>
                     </div>
                   </td>
                   <td className="px-6 py-6">
@@ -263,3 +312,4 @@ const Reports: React.FC = () => {
 };
 
 export default Reports;
+
